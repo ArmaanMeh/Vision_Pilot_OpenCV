@@ -1,0 +1,13 @@
+Coursework requirements:
+Code to on and capture video from a webcam using OpenCV
+Thresholding techniques to process the video frames such as canny edge detection, Gaussian blur, etc.
+HSV segmentation to isolate specific colors in the video frames
+conversion of original frame to grayscale and HSV color spaces.
+Find, draw, and label contours in the processed video frames.
+Find centroids of the detected contours and mark them on the video frames.
+Face, eye, and smile detection using Haar cascades.
+Selector mechanism to switch between object detection modes (e.g., color tracking, face detection).
+Safety system to reset when object is lost from the frame for a certain period.
+Serial communication to send data to pan and tilt servos for camera movement.
+Record video demonstrating all functionalities.
+Github repository with well-documented code and a README file explaining how to run the project.
