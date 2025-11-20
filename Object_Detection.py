@@ -17,17 +17,26 @@ while True:
     ret, img = cam.read()
     if not ret:
         break
-    imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    mask1 = cv2.inRange(imghsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(imghsv, lower_red2, upper_red2)
-    mask = mask1 + mask2
+ # Find contours
+    contours,heriarchy = cv2.findContours(maskClose.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Morphological operations
-    maskOpen = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernelo)
-    maskClose = cv2.morphologyEx(maskOpen, cv2.MORPH_CLOSE, kernelc)
+    # Draw contours and bounding boxes
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > 200:  # Filter small noise
+            x, y, w, h = cv2.boundingRect(cnt)
+            cv2.drawContours(img,contours,-1,(0,255,0),2)
+            cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 1)
+            cv2.putText(img, ".object detected", (x, y + h + 20), cv2.FONT_HERSHEY_COMPLEX, 1.2, (0, 0, 255), 1)
 
-     
-                
+            M = cv2.moments(cnt)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                cv2.circle(img, (cx, cy), 7, (0, 0, 255), -1)
+                cv2.putText(img, f"Centroid: ({cx},{cy})", (cx + 30, cy - 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1)
+
+
     cv2.imshow("Original", img)
     cv2.imshow("Mask", mask)
     cv2.imshow("Mask Open", maskOpen)
