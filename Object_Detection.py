@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 # Load Haar Cascade classifiers
-face_cascade = cv2.CascadeClassifier("opencvCW\OPENCV CW\Haar_Cadcades\haarcascade_frontalface_default.xml")
-eye_cascade = cv2.CascadeClassifier("opencvCW\OPENCV CW\Haar_Cadcades\haarcascade_eye.xml")
-smile_cascade = cv2.CascadeClassifier("opencvCW\OPENCV CW\Haar_Cadcades\haarcascade_smile.xml")
+face_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_frontalface_default.xml")
+eye_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_eye.xml")
+smile_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_smile.xml")
 
 #Define HSV ranges for red color
 lower_red1 = np.array([0, 80, 60])
@@ -18,7 +18,7 @@ kernelo = np.ones((5, 5))
 kernelc = np.ones((10, 10)) 
 
 # Initialize video capture
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture(0,cv2.CAP_DSHOW)
 cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
 
 while True:
@@ -46,8 +46,6 @@ while True:
         cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
         cv2.putText(img,"Smile detected",(x-40,y-40),cv2.FONT_HERSHEY_COMPLEX,1.2,(0,255,0),2)
 
-
-
     # Create masks for both red ranges
     mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
     mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -63,7 +61,7 @@ while True:
     # Draw contours and bounding boxes
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 200:  # Filter small noise
+        if area > 500:  # Filter small noise
             x, y, w, h = cv2.boundingRect(cnt)
             cv2.drawContours(img,contours,-1,(0,255,0),2)
             cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 1)
