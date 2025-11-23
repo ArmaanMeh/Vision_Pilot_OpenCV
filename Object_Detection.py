@@ -4,14 +4,14 @@ import numpy as np
 # Load Haar Cascade classifiers
 face_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_frontalface_default.xml")
 eye_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_eye.xml")
-smile_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_smile.xml")
+#smile_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_smile.xml")
 
 #Define HSV ranges for red color
 lower_red1 = np.array([0, 80, 60])
-upper_red1 = np.array([10, 255, 255]) 
+upper_red1 = np.array([10, 240, 230]) 
 
 lower_red2 = np.array([170, 80, 60])
-upper_red2 = np.array([180, 255, 255]) 
+upper_red2 = np.array([180, 240, 230]) 
 
 # Define morphological operation kernels
 kernelo = np.ones((5, 5))
@@ -41,10 +41,10 @@ while True:
         cv2.putText(img,"Eyes detected",(x-40,y-40),cv2.FONT_HERSHEY_COMPLEX,1.2,(0,255,0),2)
     
     #Smile detection
-    smile = smile_cascade.detectMultiScale(img,1.1,5)
-    for x,y,w,h in smile:
-        cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-        cv2.putText(img,"Smile detected",(x-40,y-40),cv2.FONT_HERSHEY_COMPLEX,1.2,(0,255,0),2)
+    #smile = smile_cascade.detectMultiScale(img,1.1,5)
+    #for x,y,w,h in smile:
+    #    cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+    #    cv2.putText(img,"Smile detected",(x-40,y-40),cv2.FONT_HERSHEY_COMPLEX,1.2,(0,255,0),2)
 
     # Create masks for both red ranges
     mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
