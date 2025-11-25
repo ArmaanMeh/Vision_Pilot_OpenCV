@@ -14,5 +14,9 @@ class SerialComm:
         message = f"{tag},{x},{y}\n"
         self.ser.write(message.encode())
 
+         # Log to file
+        with open(self.logfile, "a") as f:
+            f.write(message)
+
     def close(self):
         self.ser.close()
