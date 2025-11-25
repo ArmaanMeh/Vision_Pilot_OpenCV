@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 # Load Haar Cascade classifiers
-face_cascade = cv2.CascadeClassifier("opencvCW\\OPENCV CW\\Haar_Cadcades\\haarcascade_frontalface_default.xml")
-eye_cascade = cv2.CascadeClassifier("opencvCW\\OPENCV CW\\Haar_Cadcades\\haarcascade_eye.xml")
-smile_cascade = cv2.CascadeClassifier("opencvCW\\OPENCV CW\\Haar_Cadcades\\haarcascade_smile.xml")
+face_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_frontalface_default.xml")
+eye_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_eye.xml")
+smile_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_smile.xml")
 
 # Define HSV ranges for red color
 lower_red1 = np.array([0, 80, 60])
