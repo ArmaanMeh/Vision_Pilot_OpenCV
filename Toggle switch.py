@@ -70,6 +70,18 @@ current_pan = 90
 current_tilt = 90
 send_pan_tilt(current_pan, current_tilt) # Send initial position
 
+# Get frame dimensions for centering calculations
+# Note: This should be done after cam.read() for better robustness
+frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+center_x = frame_width // 2
+center_y = frame_height // 2
+
+# Initial Servo Angles (assuming 90 degrees is the center position)
+current_pan = 90
+current_tilt = 90
+send_pan_tilt(current_pan, current_tilt) # Send initial position
+
 # Toggle flags
 show_red = False
 show_face = False
