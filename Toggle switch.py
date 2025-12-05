@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import serial
 import time
+import collections
 
 # Serial Port 
 SERIAL_PORT = 'COM3' 
@@ -14,8 +15,11 @@ TILT_MIN = 0
 TILT_MAX = 120
 
 # Tracking Sensitivity (Higher = Faster movement)
-GAIN_PAN = 1.5
-GAIN_TILT = 1.5
+KP_PAN = 1.5
+KP_TILT = 1.5
+KI_PAN = 0.05
+KI_TILT = 0.05  
+FILTER_SIZE = 5
 
 # SERIAL SETUP
 
@@ -30,6 +34,16 @@ except serial.SerialException as e:
 # Initial Angles
 current_pan = 90.0
 current_tilt = 60.0
+
+# PI Controller State
+global integral_pan, integral_tilt
+integral_pan = 0.0
+integral_tilt = 0.0
+MAX_INTEGRAL = 20.0
+
+pan_history = collections.deque([current_pan]*FILTER_SIZE, maxlen=FILTER_SIZE)
+tilt_history = collections.deque([current_tilt]*FILTER_SIZE, maxlen=FILTER_SIZE)
+
 
 def send_pan_tilt(pan, tilt):
     """
@@ -101,8 +115,8 @@ while True:
     # We need a target to track (x, y)
     target_x = None
     target_y = None
-    target_label = ""
-
+    target_label = "No Target"
+    
     # 1. FACE DETECTION 
     if show_face:
         faces = face_cascade.detectMultiScale(img, 1.1, 5)
@@ -170,23 +184,46 @@ while True:
     # ==========================================
     # TRACKING LOGIC (-1 to 1 Integration)
     # ==========================================
-    if target_x is not None and target_y is not None:
-        # Calculate Normalized Error (-1.0 to 1.0)
-        norm_error_x = (target_x - center_x) / (w / 2)
-        norm_error_y = (target_y - center_y) / (h / 2)
+        # Integral Component (Accumulates small, persistent error)
+        
+        # Only perform tracking logic if target_x and target_y are not None
+        if target_x is not None and target_y is not None:
+            # Calculate Normalized Error (-1.0 to 1.0)
+            error_pan = (target_x - center_x) / (w / 2)
+            error_tilt = (target_y - center_y) / (h / 2)
 
-        # Update Pan/Tilt based on error and gain
-        # Note: Directions (+/-) depend on your specific motor mounting
-        current_pan += (norm_error_x * GAIN_PAN)
-        current_tilt -= (norm_error_y * GAIN_TILT) # Y is inverted in images
+            integral_pan += error_pan
+            integral_tilt += error_tilt
 
-        # Send to Arduino (Function handles clamping)
-        send_pan_tilt(current_pan, current_tilt)
+            # Anti-windup (Clamping the integral component)
+            integral_pan = max(-MAX_INTEGRAL, min(MAX_INTEGRAL, integral_pan))
+            integral_tilt = max(-MAX_INTEGRAL, min(MAX_INTEGRAL, integral_tilt))
 
-        # Visuals
-        cv2.line(img, (center_x, center_y), (target_x, target_y), (0, 0, 0), 2)
-        cv2.putText(img, f"{target_label} | Pan:{int(current_pan)} Tilt:{int(current_tilt)}", 
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            # PI Control Formula: Output = Kp * Error + Ki * Integral [Image of PI Controller Block Diagram]
+            pan_correction = (KP_PAN * error_pan) + (KI_PAN * integral_pan)
+            tilt_correction = (KP_TILT * error_tilt) + (KI_TILT * integral_tilt)
+
+            # Apply correction to current angle
+            current_pan += pan_correction
+            current_tilt -= tilt_correction
+            
+            # Angle Smoothing: Add to history
+            pan_history.append(current_pan)
+            tilt_history.append(current_tilt)
+            
+            # Angle Smoothing: Calculate filtered angle (Moving Average)
+            smooth_pan = sum(pan_history) / FILTER_SIZE
+            smooth_tilt = sum(tilt_history) / FILTER_SIZE
+            # Send to Arduino (Function handles clamping)
+            send_pan_tilt(smooth_pan, smooth_tilt)
+
+            # Visuals
+            cv2.line(img, (center_x, center_y), (target_x, target_y), (0, 0, 0), 2)
+            cv2.putText(img, f"{target_label} | Pan:{int(current_pan)} Tilt:{int(current_tilt)}", 
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        else:
+            cv2.putText(img, f"{target_label}", 
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
     cv2.imshow("Tracking System", img)
 
