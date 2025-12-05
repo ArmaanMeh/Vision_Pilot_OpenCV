@@ -106,11 +106,13 @@ while True:
     ret, img = cam.read()
     if not ret: break
 
+    blurred_img = cv2.GaussianBlur(img, (5, 5), 0)
+
     # Get dimensions for normalized tracking
     h, w, c = img.shape
     center_x, center_y = w // 2, h // 2
     
-    imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    imgHSV = cv2.cvtColor(blurred_img, cv2.COLOR_BGR2HSV)
 
     # We need a target to track (x, y)
     target_x = None
