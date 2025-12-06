@@ -3,9 +3,6 @@ import numpy as np
 import serial
 import time
 import collections
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
 
 # Serial Port 
 SERIAL_PORT = 'COM3' 
@@ -150,7 +147,7 @@ while True:
 
     # 4. RED OBJECT DETECTION 
     MIN_AREA = 600
-    MAX_AREA = 9000
+    MAX_AREA = 30000
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -235,21 +232,7 @@ while True:
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
     cv2.imshow("Tracking System", img)
-    if largest_contour is not None:
-        x, y, w, h = cv2.boundingRect(largest_contour)
-        roi = img[y:y+h, x:x+w]
-        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        roi_bin = cv2.adaptiveThreshold(roi_gray, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)
-        text = pytesseract.image_to_string(roi_gray)
-        roi_resized = cv2.resize(roi_bin, None, fx=3, fy=3,interpolation=cv2.INTER_CUBIC)
-        roi_clean = cv2.medianBlur(roi_resized, 3)
-        config = "--oem 3 --psm 7"
-        text = pytesseract.image_to_string(roi_clean, config=config)
-        if text.strip():
-            print("Detected text:", text.strip())
-            cv2.putText(img, text.strip(), (x, y-10), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0, 255, 255), 2)
-
-
+    
     # Keys
     key = cv2.waitKey(10) & 0xFF
     if key == ord('q'): break
