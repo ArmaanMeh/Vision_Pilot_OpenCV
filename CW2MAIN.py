@@ -161,23 +161,23 @@ while True:
         cv2.drawContours(img, contours, -1, (0, 255, 0), 2)
 
         # Find largest red object
-        largest_contour = None
-        max_area = 0
+        nearest_contour = None
+        nearest_area = 0
         for cnt in contours:
             area = cv2.contourArea(cnt)
             if MIN_AREA < area < MAX_AREA:
-                if area > 600: # Filter noise
-                     if area > max_area:
-                        max_area = area
-                        largest_contour = cnt
+                if area > nearest_area: # Filter noise
+                     if area > nearest_area:
+                        nearest_area = area
+                        nearest_contour = cnt
                 
                 # Draw box around all
                 x, y, cw, ch = cv2.boundingRect(cnt)
                 cv2.rectangle(img, (x, y), (x+cw, y+ch), (255, 0, 0), 1)
 
         # If we found a red object AND we aren't tracking a face
-        if largest_contour is not None and target_x is None:
-            M = cv2.moments(largest_contour)
+        if nearest_contour is not None and target_x is None:
+            M = cv2.moments(nearest_contour)
             if M["m00"] != 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
