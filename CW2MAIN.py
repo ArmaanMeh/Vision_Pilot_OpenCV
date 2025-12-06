@@ -44,7 +44,6 @@ MAX_INTEGRAL = 20.0
 pan_history = collections.deque([current_pan]*FILTER_SIZE, maxlen=FILTER_SIZE)
 tilt_history = collections.deque([current_tilt]*FILTER_SIZE, maxlen=FILTER_SIZE)
 
-
 def send_pan_tilt(pan, tilt):
     """
     Clamps angles to limits and sends to Arduino via Serial.
@@ -60,9 +59,7 @@ def send_pan_tilt(pan, tilt):
         except Exception as e:
             print(f"Serial Write Error: {e}")
 
-# ==========================================
 # CV SETUP
-# ==========================================
 # Load Haar Cascades
 try:
     face_cascade = cv2.CascadeClassifier("Haar_Cascades XML\haarcascade_frontalface_default.xml")
@@ -78,13 +75,13 @@ lower_red2 = np.array([170, 70, 60])
 upper_red2 = np.array([180, 255, 255])
 
 # HSV ranges for other colours
-lower_blue = np.array([100, 150, 50])
+lower_blue = np.array([100, 100, 100])
 upper_blue = np.array([140, 255, 255])
 
 lower_green = np.array([40, 70, 50])
 upper_green = np.array([80, 255, 255])
 
-lower_yellow = np.array([20, 100, 100])
+lower_yellow = np.array([20, 160, 150])
 upper_yellow = np.array([30, 255, 255])
 
 
@@ -162,8 +159,10 @@ while True:
             cv2.rectangle(img, (x, y), (x+sw, y+sh), (0, 255, 255), 2)
 
     # 4. RED OBJECT DETECTION 
-    MIN_AREA = 600
-    MAX_AREA = 30000
+    MIN_AREA = 600 #For red objects
+    MAX_AREA = 30000 #For red objects
+    MIN_VISUAL_AREA = 3000 # For blue, green, yellow
+    MAX_VISUAL_AREA = 30000 # For blue, green, yellow
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -207,17 +206,26 @@ while True:
     # --- BLUE OBJECT DETECTION (contours only, no tracking) ---
     mask_blue = cv2.inRange(imgHSV, lower_blue, upper_blue)
     contours_blue, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(img, contours_blue, -1, (255, 0, 0), 2)
+    for cnt in contours_blue:
+        area = cv2.contourArea(cnt)
+        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
+            cv2.drawContours(img, [cnt], -1, (255, 0, 0), 2)
 
 # --- GREEN OBJECT DETECTION (contours only, no tracking) ---
     mask_green = cv2.inRange(imgHSV, lower_green, upper_green)
     contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(img, contours_green, -1, (0, 255, 0), 2)
+    for cnt in contours_green:
+        area = cv2.contourArea(cnt)
+        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
+            cv2.drawContours(img, [cnt], -1, (0, 255, 0), 2)
 
 # --- YELLOW OBJECT DETECTION (contours only, no tracking) ---
     mask_yellow = cv2.inRange(imgHSV, lower_yellow, upper_yellow)
     contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(img, contours_yellow, -1, (0, 255, 255), 2)
+    for cnt in contours_yellow:
+        area = cv2.contourArea(cnt)
+        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
+            cv2.drawContours(img, [cnt], -1, (0, 255, 255), 2)
 
     # FAIL-SAFE BEHAVIOUR
     if time.time() - last_detection_time > FAILSAFE_TIMEOUT:
