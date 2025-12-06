@@ -76,9 +76,9 @@ except Exception as e:
     print("Error loading cascades. Check your file paths!")
 
 # HSV Ranges for Red
-lower_red1 = np.array([0, 55, 60])
+lower_red1 = np.array([0, 70, 60])
 upper_red1 = np.array([10, 255, 255]) 
-lower_red2 = np.array([170, 55, 60])
+lower_red2 = np.array([170, 70, 60])
 upper_red2 = np.array([180, 255, 255]) 
 
 # Morphological kernels
@@ -166,7 +166,7 @@ while True:
         max_area = 0
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 500: # Filter noise
+            if area > 400: # Filter noise
                 if area > max_area:
                     max_area = area
                     largest_contour = cnt
@@ -235,8 +235,12 @@ while True:
         x, y, w, h = cv2.boundingRect(largest_contour)
         roi = img[y:y+h, x:x+w]
         roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        roi_gray = cv2.threshold(roi_gray, 100, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        roi_bin = cv2.adaptiveThreshold(roi_gray, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)
         text = pytesseract.image_to_string(roi_gray)
+        roi_resized = cv2.resize(roi_bin, None, fx=3, fy=3,interpolation=cv2.INTER_CUBIC)
+        roi_clean = cv2.medianBlur(roi_resized, 3)
+        config = "--oem 3 --psm 7"
+        text = pytesseract.image_to_string(roi_clean, config=config)
         if text.strip():
             print("Detected text:", text.strip())
             cv2.putText(img, text.strip(), (x, y-10), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0, 255, 255), 2)
