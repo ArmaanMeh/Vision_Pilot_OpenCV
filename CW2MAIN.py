@@ -149,6 +149,8 @@ while True:
             cv2.rectangle(img, (x, y), (x+sw, y+sh), (0, 255, 255), 2)
 
     # 4. RED OBJECT DETECTION 
+    MIN_AREA = 600
+    MAX_AREA = 20000
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -166,10 +168,11 @@ while True:
         max_area = 0
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 400: # Filter noise
-                if area > max_area:
-                    max_area = area
-                    largest_contour = cnt
+            if MIN_AREA < area < MAX_AREA:
+                if area > 600: # Filter noise
+                     if area > max_area:
+                        max_area = area
+                        largest_contour = cnt
                 
                 # Draw box around all
                 x, y, cw, ch = cv2.boundingRect(cnt)
@@ -183,9 +186,10 @@ while True:
                 cy = int(M["m01"] / M["m00"])
                 target_x = cx
                 target_y = cy
-                target_label = "Tracking Red"
+                target_label = "Tracking Red (distance OK)"
                 cv2.circle(img, (cx, cy), 7, (0, 0, 255), -1)
-
+            else:
+                cv2.putText(img, "Object out of distance range",(10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,(0, 0, 255), 2)
     # ==========================================
     # TRACKING LOGIC (-1 to 1 Integration)
     # ==========================================
