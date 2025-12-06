@@ -120,7 +120,7 @@ while True:
     target_label = "No Target"
     
     # 1. FACE DETECTION 
-    if show_face:
+    if show_face and target_x is None:
         faces = face_cascade.detectMultiScale(img, 1.1, 5)
         
         # If faces found, pick the largest one to track
