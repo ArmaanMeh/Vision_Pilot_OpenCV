@@ -76,7 +76,18 @@ except Exception as e:
 lower_red1 = np.array([0, 70, 60])
 upper_red1 = np.array([10, 255, 255]) 
 lower_red2 = np.array([170, 70, 60])
-upper_red2 = np.array([180, 255, 255]) 
+upper_red2 = np.array([180, 255, 255])
+
+# HSV ranges for other colours
+lower_blue = np.array([100, 150, 50])
+upper_blue = np.array([140, 255, 255])
+
+lower_green = np.array([40, 70, 50])
+upper_green = np.array([80, 255, 255])
+
+lower_yellow = np.array([20, 100, 100])
+upper_yellow = np.array([30, 255, 255])
+
 
 # Morphological kernels
 kernelo = np.ones((5, 5))
@@ -187,13 +198,29 @@ while True:
                 cv2.circle(img, (cx, cy), 7, (0, 0, 255), -1)
             else:
                 cv2.putText(img, "Object out of distance range",(10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,(0, 0, 255), 2)
+
+    # --- BLUE OBJECT DETECTION (contours only, no tracking) ---
+    mask_blue = cv2.inRange(imgHSV, lower_blue, upper_blue)
+    contours_blue, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(img, contours_blue, -1, (255, 0, 0), 2)
+
+# --- GREEN OBJECT DETECTION (contours only, no tracking) ---
+    mask_green = cv2.inRange(imgHSV, lower_green, upper_green)
+    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(img, contours_green, -1, (0, 255, 0), 2)
+
+# --- YELLOW OBJECT DETECTION (contours only, no tracking) ---
+    mask_yellow = cv2.inRange(imgHSV, lower_yellow, upper_yellow)
+    contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(img, contours_yellow, -1, (0, 255, 255), 2)
+
     # ==========================================
     # TRACKING LOGIC (-1 to 1 Integration)
     # ==========================================
-        # Integral Component (Accumulates small, persistent error)
-        
-        # Only perform tracking logic if target_x and target_y are not None
-        if target_x is not None and target_y is not None:
+    # Integral Component (Accumulates small, persistent error)
+    
+    # Only perform tracking logic if target_x and target_y are not None
+    if target_x is not None and target_y is not None:
             # Calculate Normalized Error (-1.0 to 1.0)
             error_pan = (target_x - center_x) / (w / 2)
             error_tilt = (target_y - center_y) / (h / 2)
@@ -227,7 +254,7 @@ while True:
             cv2.line(img, (center_x, center_y), (target_x, target_y), (0, 0, 0), 2)
             cv2.putText(img, f"{target_label} | Pan:{int(current_pan)} Tilt:{int(current_tilt)}", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        else:
+    else:
             cv2.putText(img, f"{target_label}", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
