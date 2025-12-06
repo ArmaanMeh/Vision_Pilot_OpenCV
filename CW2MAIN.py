@@ -150,7 +150,7 @@ while True:
 
     # 4. RED OBJECT DETECTION 
     MIN_AREA = 600
-    MAX_AREA = 20000
+    MAX_AREA = 17000
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
