@@ -70,20 +70,16 @@ except Exception as e:
 
 # HSV Ranges for Red
 lower_red1 = np.array([0, 70, 60])
-upper_red1 = np.array([10, 255, 255]) 
+upper_red1 = np.array([10, 235, 235]) 
 lower_red2 = np.array([170, 70, 60])
-upper_red2 = np.array([180, 255, 255])
+upper_red2 = np.array([180, 235, 235])
 
 # HSV ranges for other colours
 lower_blue = np.array([100, 100, 100])
-upper_blue = np.array([140, 255, 255])
+upper_blue = np.array([140, 230, 230])
 
 lower_green = np.array([40, 70, 50])
-upper_green = np.array([80, 255, 255])
-
-lower_yellow = np.array([20, 160, 150])
-upper_yellow = np.array([30, 255, 255])
-
+upper_green = np.array([80, 230, 230])
 
 # Morphological kernels
 kernelo = np.ones((5, 5))
@@ -97,9 +93,12 @@ cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 # Flags
 show_red = True
+show_blue = True
+show_green = False
 show_face = False  
 show_eye = False
 show_smile = False
+
 
 # Send Initial Position
 send_pan_tilt(current_pan, current_tilt)
@@ -135,13 +134,11 @@ while True:
     # 1. FACE DETECTION 
     if show_face and target_x is None:
         faces = face_cascade.detectMultiScale(img, 1.1, 5)
-        
         # If faces found, pick the largest one to track
         if len(faces) > 0:
             (x, y, fw, fh) = max(faces, key=lambda f: f[2] * f[3])
             cv2.rectangle(img, (x, y), (x+fw, y+fh), (0, 255, 0), 2)
-            cv2.putText(img, "Face", (x, y-10), cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 255, 0), 2)
-            
+            cv2.putText(img, "Face", (x, y-10), cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 255, 0), 2) 
             target_x = x + fw // 2
             target_y = y + fh // 2
             target_label = "Tracking Face"
@@ -161,8 +158,8 @@ while True:
     # 4. RED OBJECT DETECTION 
     MIN_AREA = 600 #For red objects
     MAX_AREA = 30000 #For red objects
-    MIN_VISUAL_AREA = 3000 # For blue, green, yellow
-    MAX_VISUAL_AREA = 30000 # For blue, green, yellow
+    MIN_VISUAL_AREA = 8000 # For blue, green
+    MAX_VISUAL_AREA = 20000 # For blue, green
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -218,14 +215,6 @@ while True:
         area = cv2.contourArea(cnt)
         if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
             cv2.drawContours(img, [cnt], -1, (0, 255, 0), 2)
-
-# --- YELLOW OBJECT DETECTION (contours only, no tracking) ---
-    mask_yellow = cv2.inRange(imgHSV, lower_yellow, upper_yellow)
-    contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours_yellow:
-        area = cv2.contourArea(cnt)
-        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
-            cv2.drawContours(img, [cnt], -1, (0, 255, 255), 2)
 
     # FAIL-SAFE BEHAVIOUR
     if time.time() - last_detection_time > FAILSAFE_TIMEOUT:
