@@ -54,7 +54,6 @@ def send_pan_tilt(pan, tilt):
     tilt = max(TILT_MIN, min(TILT_MAX, int(tilt)))
     
     if arduino_serial:
-        # Format: PxxxTxxx\n
         command = f"P{pan:03d}T{tilt:03d}\n"
         try:
             arduino_serial.write(command.encode('utf-8'))
@@ -112,6 +111,10 @@ print("'r' - Toggle Red Object Detection")
 print("'e' - Toggle Eye Detection")
 print("'s' - Toggle Smile Detection")
 print("'q' - Quit")
+
+# Fail-safe initializations
+last_detection_time = time.time()
+FAILSAFE_TIMEOUT = 3.0  # Seconds before reset
 
 while True:
     ret, img = cam.read()
@@ -214,11 +217,19 @@ while True:
     contours_yellow, _ = cv2.findContours(mask_yellow, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(img, contours_yellow, -1, (0, 255, 255), 2)
 
-    # ==========================================
-    # TRACKING LOGIC (-1 to 1 Integration)
-    # ==========================================
-    # Integral Component (Accumulates small, persistent error)
+    # FAIL-SAFE BEHAVIOUR
+    if time.time() - last_detection_time > FAILSAFE_TIMEOUT:
+        target_x = img.shape[1] // 2
+        target_y = img.shape[0] // 2
+        target_label = "Fail-safe: Center"
+
+        #Neutral servo position
+        if arduino_serial is not None and arduino_serial.is_open:
+            arduino_serial.write(f"{target_x},{target_y}\n".encode())
+        else:
+            print(f"servo command: {target_x},{target_y}")
     
+  
     # Only perform tracking logic if target_x and target_y are not None
     if target_x is not None and target_y is not None:
             # Calculate Normalized Error (-1.0 to 1.0)
@@ -252,11 +263,9 @@ while True:
 
             # Visuals
             cv2.line(img, (center_x, center_y), (target_x, target_y), (0, 0, 0), 2)
-            cv2.putText(img, f"{target_label} | Pan:{int(current_pan)} Tilt:{int(current_tilt)}", 
-                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(img, f"{target_label} | Pan:{int(current_pan)} Tilt:{int(current_tilt)}",(10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     else:
-            cv2.putText(img, f"{target_label}", 
-                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(img, f"{target_label}",(10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
     cv2.imshow("Tracking System", img)
     
