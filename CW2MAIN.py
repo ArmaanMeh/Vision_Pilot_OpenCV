@@ -86,7 +86,7 @@ kernelo = np.ones((5, 5))
 kernelc = np.ones((10, 10)) 
 
 # Camera Setup
-cam = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
@@ -156,7 +156,7 @@ while True:
             cv2.rectangle(img, (x, y), (x+sw, y+sh), (0, 255, 255), 2)
 
     # 4. RED OBJECT DETECTION 
-    MIN_AREA = 600 #For red objects
+    MIN_AREA = 2000 #For red objects
     MAX_AREA = 30000 #For red objects
     MIN_VISUAL_AREA = 8000 # For blue, green
     MAX_VISUAL_AREA = 20000 # For blue, green
@@ -172,7 +172,7 @@ while True:
         # Draw all red objects
         cv2.drawContours(img, contours, -1, (0, 255, 0), 2)
 
-        # Find largest red object
+        # Find nearest red object
         nearest_contour = None
         nearest_area = 0
         for cnt in contours:
@@ -197,6 +197,7 @@ while True:
                 target_y = cy
                 target_label = "Tracking Red (distance OK)"
                 cv2.circle(img, (cx, cy), 7, (0, 0, 255), -1)
+                cv2.line(img, (cx, cy),(img.shape[1]//2, img.shape[0]//2), (0, 0, 255), 2)
             else:
                 cv2.putText(img, "Object out of distance range",(10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,(0, 0, 255), 2)
 
