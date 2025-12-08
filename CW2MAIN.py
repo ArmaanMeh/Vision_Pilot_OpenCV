@@ -5,7 +5,7 @@ import time
 import collections
 
 # Serial Port 
-SERIAL_PORT = 'COM4' 
+SERIAL_PORT = 'COM8' 
 BAUD_RATE = 9600
 
 # Hardware Servo Limits
@@ -15,11 +15,17 @@ TILT_MIN = 0
 TILT_MAX = 120
 
 # Tracking Sensitivity (Higher = Faster movement)
-KP_PAN = 1.5
-KP_TILT = 1.5
-KI_PAN = 0.05
-KI_TILT = 0.05  
+KP_PAN = 0.8
+KP_TILT = 0.8
+KI_PAN = 0.01
+KI_TILT = 0.01  
 FILTER_SIZE = 5
+
+def normalize_angle(angle, min_angle, max_angle):
+    """
+    Map servo angle [min_angle, max_angle] to normalized range [-1, 1].
+    """
+    return ((angle - (min_angle + max_angle)/2) / ((max_angle - min_angle)/2))
 
 # SERIAL SETUP
 
@@ -30,16 +36,31 @@ try:
 except serial.SerialException as e:
     print(f"Error connecting to serial: {e}")
     arduino_serial = None
-
-# Initial Angles
-current_pan = 90.0
-current_tilt = 60.0
+def get_center_from_arduino():
+    if arduino_serial:
+        line = arduino_serial.readline().decode().strip()
+        if line.startswith("CENTER:"):
+            try:
+                _, coords = line.split(":")
+                pan_str, tilt_str = coords.split(",")
+                return float(pan_str), float(tilt_str)
+            except:
+                pass
+    return None, None
+pan_center, tilt_center = get_center_from_arduino()
+if pan_center is not None and tilt_center is not None:
+    current_pan = pan_center
+    current_tilt = tilt_center
+else:
+    # fallback if Arduino didn't send anything
+    current_pan = (PAN_MAX - PAN_MIN)/2
+    current_tilt = (TILT_MAX - TILT_MIN)/2
 
 # PI Controller State
 global integral_pan, integral_tilt
 integral_pan = 0.0
 integral_tilt = 0.0
-MAX_INTEGRAL = 20.0
+MAX_INTEGRAL = 5.0
 
 pan_history = collections.deque([current_pan]*FILTER_SIZE, maxlen=FILTER_SIZE)
 tilt_history = collections.deque([current_tilt]*FILTER_SIZE, maxlen=FILTER_SIZE)
@@ -51,9 +72,13 @@ def send_pan_tilt(pan, tilt):
     # Clamp values to hardware limits
     pan = max(PAN_MIN, min(PAN_MAX, int(pan)))
     tilt = max(TILT_MIN, min(TILT_MAX, int(tilt)))
+
+     # Normalize to [-1, 1]
+    norm_pan = normalize_angle(pan, PAN_MIN, PAN_MAX)
+    norm_tilt = normalize_angle(tilt, TILT_MIN, TILT_MAX)
     
     if arduino_serial:
-        command = f"P{pan:03d}T{tilt:03d}\n"
+        command = f"P{norm_pan:.2f}T{norm_tilt:.2f}\n"
         try:
             arduino_serial.write(command.encode('utf-8'))
         except Exception as e:
@@ -70,31 +95,22 @@ except Exception as e:
 
 # HSV Ranges for Red
 lower_red1 = np.array([0, 70, 60])
-upper_red1 = np.array([10, 235, 235]) 
+upper_red1 = np.array([10, 245, 245]) 
 lower_red2 = np.array([170, 70, 60])
-upper_red2 = np.array([180, 235, 235])
-
-# HSV ranges for other colours
-lower_blue = np.array([100, 100, 100])
-upper_blue = np.array([140, 230, 230])
-
-lower_green = np.array([40, 70, 50])
-upper_green = np.array([80, 230, 230])
+upper_red2 = np.array([180, 245, 245])
 
 # Morphological kernels
 kernelo = np.ones((5, 5))
 kernelc = np.ones((10, 10)) 
 
 # Camera Setup
-cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cam = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 # Flags
 show_red = True
-show_blue = True
-show_green = False
 show_face = False  
 show_eye = False
 show_smile = False
@@ -112,7 +128,7 @@ print("'q' - Quit")
 
 # Fail-safe initializations
 last_detection_time = time.time()
-FAILSAFE_TIMEOUT = 3.0  # Seconds before reset
+FAILSAFE_TIMEOUT = 5.0  # Seconds before reset
 
 while True:
     ret, img = cam.read()
@@ -158,8 +174,7 @@ while True:
     # 4. RED OBJECT DETECTION 
     MIN_AREA = 2000 #For red objects
     MAX_AREA = 30000 #For red objects
-    MIN_VISUAL_AREA = 8000 # For blue, green
-    MAX_VISUAL_AREA = 20000 # For blue, green
+    
     if show_red:
         mask1 = cv2.inRange(imgHSV, lower_red1, upper_red1)
         mask2 = cv2.inRange(imgHSV, lower_red2, upper_red2)
@@ -172,24 +187,24 @@ while True:
         # Draw all red objects
         cv2.drawContours(img, contours, -1, (0, 255, 0), 2)
 
-        # Find nearest red object
-        nearest_contour = None
-        nearest_area = 0
+        # Find largest red object
+        largest_contour = None
+        largest_area = 0
         for cnt in contours:
             area = cv2.contourArea(cnt)
             if MIN_AREA < area < MAX_AREA:
-                if area > nearest_area: # Filter noise
-                     if area > nearest_area:
-                        nearest_area = area
-                        nearest_contour = cnt
+                if area > largest_area: # Filter noise
+                     if area > largest_area:
+                        largest_area = area
+                        largest_contour = cnt
                 
                 # Draw box around all
                 x, y, cw, ch = cv2.boundingRect(cnt)
                 cv2.rectangle(img, (x, y), (x+cw, y+ch), (255, 0, 0), 1)
 
         # If we found a red object AND we aren't tracking a face
-        if nearest_contour is not None and target_x is None:
-            M = cv2.moments(nearest_contour)
+        if largest_contour is not None and target_x is None:
+            M = cv2.moments(largest_contour)
             if M["m00"] != 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
@@ -200,22 +215,6 @@ while True:
                 cv2.line(img, (cx, cy),(img.shape[1]//2, img.shape[0]//2), (0, 0, 255), 2)
             else:
                 cv2.putText(img, "Object out of distance range",(10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7,(0, 0, 255), 2)
-
-    # --- BLUE OBJECT DETECTION (contours only, no tracking) ---
-    mask_blue = cv2.inRange(imgHSV, lower_blue, upper_blue)
-    contours_blue, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours_blue:
-        area = cv2.contourArea(cnt)
-        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
-            cv2.drawContours(img, [cnt], -1, (255, 0, 0), 2)
-
-# --- GREEN OBJECT DETECTION (contours only, no tracking) ---
-    mask_green = cv2.inRange(imgHSV, lower_green, upper_green)
-    contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours_green:
-        area = cv2.contourArea(cnt)
-        if MIN_VISUAL_AREA < area < MAX_VISUAL_AREA:
-            cv2.drawContours(img, [cnt], -1, (0, 255, 0), 2)
 
     # FAIL-SAFE BEHAVIOUR
     if time.time() - last_detection_time > FAILSAFE_TIMEOUT:
@@ -235,6 +234,15 @@ while True:
             # Calculate Normalized Error (-1.0 to 1.0)
             error_pan = (target_x - center_x) / (w / 2)
             error_tilt = (target_y - center_y) / (h / 2)
+
+            # --- Deadzone filter ---
+            DEADBAND_X = 0.05   # 5% tolerance horizontally
+            DEADBAND_Y = 0.05   # 5% tolerance vertically
+
+            if abs(error_pan) < DEADBAND_X:
+                error_pan = 0
+            if abs(error_tilt) < DEADBAND_Y:
+                error_tilt = 0
 
             integral_pan += error_pan
             integral_tilt += error_tilt
