@@ -4,28 +4,27 @@ import serial
 import time
 import os 
 
-# ================= USER CONFIGURATION =================
 # --- Hardware Settings ---
 SERIAL_PORT = 'COM8'      
 BAUD_RATE = 9600
-CAMERA_ID = 1
+CAMERA_ID = 0
 
 # --- Movement Settings ---
-SEND_RATE_HZ = 1          
+SEND_RATE_HZ = 10          
 SEND_INTERVAL = 1.0 / SEND_RATE_HZ 
 
-DEAD_BAND_PIXELS = 35 
-SMOOTHING_FACTOR = 0.5    
+DEAD_BAND_PIXELS = 50 
+SMOOTHING_FACTOR = 0.5
+MAX_SPEED_CAP = 0.25   
 
 # --- Detection Settings ---
-LOWER_RED1 = np.array([0, 80, 70])
+LOWER_RED1 = np.array([0, 80, 85])
 UPPER_RED1 = np.array([10, 255, 255])
-LOWER_RED2 = np.array([170, 80, 70])
+LOWER_RED2 = np.array([170, 80, 85])
 UPPER_RED2 = np.array([180, 255, 255])
 
-MIN_AREA = 800            
-MAX_AREA = 130000         
-# ======================================================
+MIN_AREA = 1500            
+MAX_AREA = 60000         
 
 # --- Haar Cascade Configuration (Using the paths from your sample code) ---
 FACE_CASCADE_PATH = "Haar_Cascades XML/haarcascade_frontalface_default.xml"
@@ -40,8 +39,8 @@ toggle_smile = False
 # Global variables for smoothing
 ser = None
 last_send_time = 0
-prev_pan = 0.0
-prev_tilt = 0.0
+global_pan_position = 0.0
+global_tilt_position = 0.0
 
 def init_serial():
     """Attempts to connect to the serial port without crashing."""
@@ -54,41 +53,49 @@ def init_serial():
     except serial.SerialException:
         ser = None
 
-def send_data_smoothed(target_pan, target_tilt):
-    """Applies smoothing, prints, and sends data at a fixed interval."""
-    global ser, last_send_time, prev_pan, prev_tilt
+def send_data_smoothed(d_pan, d_tilt):
+    """
+    Acts as the Integrator (I-term) of the PI controller.
+    It accumulates the velocity command (d_pan/d_tilt) into an absolute position, 
+    clamps it, and sends the final absolute position to the Arduino.
+    """
+    global ser, last_send_time, global_pan_position, global_tilt_position
     
-    # 1. Apply Exponential Smoothing
-    smooth_pan = (prev_pan * (1 - SMOOTHING_FACTOR)) + (target_pan * SMOOTHING_FACTOR)
-    smooth_tilt = (prev_tilt * (1 - SMOOTHING_FACTOR)) + (target_tilt * SMOOTHING_FACTOR)
-    
-    prev_pan = smooth_pan
-    prev_tilt = smooth_tilt
-
     current_time = time.time()
+    
+    # Check rate limit before performing calculations
     if current_time - last_send_time < SEND_INTERVAL:
         return
 
+    # 1. Update Global Position (Integration)
+
+    global_pan_position += d_pan
+    global_tilt_position += d_tilt
+    
+    global_pan_position = max(-1.0, min(1.0, global_pan_position))
+    global_tilt_position = max(-1.0, min(1.0, global_tilt_position))
+
+    # 3. Serial Communication
     if ser is None:
         init_serial()
         return
-
-    msg = f"P{smooth_pan:.2f},T{smooth_tilt:.2f}\n"
-    print(f"[SERIAL OUT] Sending: {msg.strip()}") 
+   
+    msg = f"{global_pan_position:.4f},{global_tilt_position:.4f}\n" 
+    print(f"[SERIAL OUT] Sending POSITION: {msg.strip()} (Maps to Pan: {global_pan_position:.2f}, Tilt: {global_tilt_position:.2f})")
 
     try:
         ser.write(msg.encode('utf-8'))
         last_send_time = current_time
     except (serial.SerialException, OSError):
-        ser = None 
+        ser = None
 
 # --- MAIN SETUP ---
 cam = cv2.VideoCapture(CAMERA_ID)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-kernel_open = np.ones((5, 5))
-kernel_close = np.ones((10, 10))
+kernel_open = np.ones((7, 7))
+kernel_close = np.ones((11, 11))
 
 # Load Haar Cascades using the specified file paths
 try:
@@ -128,9 +135,7 @@ try:
         # Convert image to grayscale for Haar Cascades (more efficient)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
 
-        # ======================================================
         # 1. RED BALL TRACKING LOGIC (PRIMARY CONTROL)
-        # ======================================================
         
         # Image Pre-processing for Color Tracking
         blurred = cv2.GaussianBlur(img, (11, 11), 0)
@@ -176,30 +181,41 @@ try:
             cv2.line(img, (center_x, center_y), (cx, cy), (0, 255, 255), 2)
 
             # --- CALCULATE CONTROL ---
+           # --- CALCULATE CONTROL (Proportional Position Change - P-Term) ---
             error_x = cx - center_x
             error_y = cy - center_y
+
+            # These constants determine the direction of movement.
+            pan_direction = -1 
+            tilt_direction = -1  
+            P_GAIN = 0.0002 
+            delta_pan = 0.0
+            delta_tilt = 0.0
             
+            # Calculate the proportional change (Delta)
             if abs(error_x) > DEAD_BAND_PIXELS:
-                raw_pan = -1 * (error_x / (w / 2.0))
+                delta_pan = error_x * P_GAIN * pan_direction
             
             if abs(error_y) > DEAD_BAND_PIXELS:
-                raw_tilt = -error_y / (h / 2.0) 
+                delta_tilt = error_y * P_GAIN * tilt_direction
 
-            raw_pan = max(-1.0, min(1.0, raw_pan))
-            raw_tilt = max(-1.0, min(1.0, raw_tilt))
+        
+            delta_pan = max(-MAX_SPEED_CAP, min(MAX_SPEED_CAP, delta_pan)) 
+            delta_tilt = max(-MAX_SPEED_CAP, min(MAX_SPEED_CAP, delta_tilt))
             
-            send_data_smoothed(raw_pan, raw_tilt)
+            # Send the DELTA POSITION (rate of change) to the integrator
+            send_data_smoothed(delta_pan, delta_tilt)
             
-            cv2.putText(img, f"Pan: {prev_pan:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-            cv2.putText(img, f"Tilt: {prev_tilt:.2f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-            
+            # Update display text to show the ACTUAL global position (for debugging)
+            cv2.putText(img, f"Pan POS: {global_pan_position:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(img, f"Tilt POS: {global_tilt_position:.2f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
         else:
+            # If the ball is not found, send zero command
             send_data_smoothed(0.0, 0.0)
             
-        # ======================================================
+    
         # 2. FACE/EYE/SMILE DETECTION (VISUAL ONLY)
-        #    Integrated the structure from your provided code
-        # ======================================================
         
         if toggle_face:
             # Detect faces
