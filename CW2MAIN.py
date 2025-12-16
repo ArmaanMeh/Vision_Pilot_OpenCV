@@ -7,15 +7,15 @@ import os
 # --- Hardware Settings ---
 SERIAL_PORT = 'COM8'      
 BAUD_RATE = 9600
-CAMERA_ID = 0
+CAMERA_ID = 1
 
 # --- Movement Settings ---
 SEND_RATE_HZ = 10          
 SEND_INTERVAL = 1.0 / SEND_RATE_HZ 
 
-DEAD_BAND_PIXELS = 50 
+DEAD_BAND_PIXELS = 35 
 SMOOTHING_FACTOR = 0.5
-MAX_SPEED_CAP = 0.25  
+MAX_SPEED_CAP = 0.22  
 P_GAIN = 0.0002 
 delta_pan = 0.0
 delta_tilt = 0.0
