@@ -1,8 +1,6 @@
 
 # Project Title: Real-Time Dual-Mode Object Tracking and Pan-Tilt Control System
-
 # --- Introduction ---
-
  This project implements a robust computer vision system designed to track objects 
  in real time and control a 2-Degree-of-Freedom (2-DOF) Pan-Tilt servo platform. 
  The system supports two primary tracking methods: color-based segmentation 
@@ -11,9 +9,8 @@
  of the physical platform via serial communication (PySerial).
 
 # DEPENDENCIES AND IMPORTS
-
-# This section lists all required Python libraries and explains their role 
-# in the object tracking and control pipeline.
+ This section lists all required Python libraries and explains their role 
+ in the object tracking and control pipeline.
 
 # --- Required Imports ---
 ```
@@ -268,11 +265,8 @@ if tracked_center_x is not None:
     delta_pan = max(-MAX_SPEED_CAP, min(MAX_SPEED_CAP, delta_pan)) 
     delta_tilt = max(-MAX_SPEED_CAP, min(MAX_SPEED_CAP, delta_tilt))
     
-    
-# ==============================================================================
-# SUB-DETECTION AND VISUAL OVERLAYS (Eyes/Smile)
-# ==============================================================================
 
+# SUB-DETECTION AND VISUAL OVERLAYS (Eyes/Smile)
 # If Face Tracking wasn't active, we need to detect a face for Eyes/Smile visuals
 ```
 if face_rect is None and (toggle_eyes or toggle_smile):
@@ -344,10 +338,7 @@ cv2.putText(img, f"F: {'ON' if toggle_face else 'OFF'}", (w - 150, y_pos), cv2.F
 cv2.putText(img, f"E: {'ON' if toggle_eyes else 'OFF'}", (w - 100, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if toggle_eyes else (0, 0, 255), 2)
 cv2.putText(img, f"S: {'ON' if toggle_smile else 'OFF'}", (w - 50, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if toggle_smile else (0, 0, 255), 2)
 
-
-# ==============================================================================
 # KEYBOARD INPUT HANDLING AND CLEANUP
-# ==============================================================================
 
 # --- KEYBOARD INPUT HANDLING ---
 ```
@@ -399,4 +390,3 @@ finally:
 
 # --- Demo / Tutorial Video ---
 # URL: [Insert your YouTube or other video link here]
-
