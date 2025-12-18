@@ -7,7 +7,7 @@ import os
 # --- Hardware Settings ---
 SERIAL_PORT = 'COM8'      
 BAUD_RATE = 9600
-CAMERA_ID = 1
+CAMERA_ID = 0
 
 # --- Movement Settings ---
 SEND_RATE_HZ = 10          
