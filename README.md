@@ -8,6 +8,14 @@
  with position integration to ensure smooth, stable, and rate-limited movement 
  of the physical platform via serial communication (PySerial).
 
+##REPOSITORY AND VIDEO LINKS
+
+# --- Git Repository ---
+# URL: (https://github.com/ArmaanMeh/Vision_Pilot_OpenCV.git)
+
+# --- Demo / Tutorial Video ---
+# URL: [https://youtu.be/G3oHDGoSqUs?si=LIlOn546Ncgafgh-]
+
 # DEPENDENCIES AND IMPORTS
  This section lists all required Python libraries and explains their role 
  in the object tracking and control pipeline.
@@ -382,11 +390,3 @@ finally:
     if ser is not None:
         ser.close()
     cv2.destroyAllWindows()
-
-##REPOSITORY AND VIDEO LINKS
-
-# --- Git Repository ---
-# URL: [Insert your Git repository link here]
-
-# --- Demo / Tutorial Video ---
-# URL: [Insert your YouTube or other video link here]
